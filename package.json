@@ -1,0 +1,33 @@
+{
+  "name": "review-analyser",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Review Insights — аналізатор відгуків застосунків Google Play на LLM",
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "tsx watch src/api/server.ts",
+    "dev:web": "npm --prefix web run dev",
+    "start": "tsx src/api/server.ts",
+    "cli": "tsx src/cli.ts",
+    "collect": "tsx src/collect.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web",
+    "build:web": "npm --prefix web run build",
+    "postinstall": "npm --prefix web install"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "express": "^5.2.1",
+    "google-play-scraper": "^10.1.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.4",
+    "concurrently": "^10.0.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}
