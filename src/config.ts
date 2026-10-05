@@ -9,6 +9,11 @@ try {
 
 export const config = {
   port: Number(process.env.PORT ?? 3001),
+  /**
+   * Loopback only by default: the API spends the server's LLM key and calls any address the
+   * client names, so it must not be reachable from the network unless that is asked for.
+   */
+  host: process.env.HOST ?? "127.0.0.1",
   model: process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5",
   batchSize: 20,
   /** How many LLM batches run in parallel. */

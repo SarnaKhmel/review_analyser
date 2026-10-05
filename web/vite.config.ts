@@ -10,6 +10,7 @@ export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(version) },
   server: {
     // The API runs as a separate process; proxying keeps the browser on one origin.
-    proxy: { "/api": "http://localhost:3001" },
+    // 127.0.0.1, not localhost: the API listens on IPv4 loopback only.
+    proxy: { "/api": "http://127.0.0.1:3001" },
   },
 });
