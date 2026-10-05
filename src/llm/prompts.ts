@@ -47,17 +47,27 @@ export function buildClassifyMessage(reviews: Review[]): string {
 
 export type TopicItem = { index: number; category: string; topic: string; reviews: number };
 
-export const GROUP_TOPICS_SYSTEM_PROMPT = `You tidy up topic labels of app reviews.
+/** Part of the cache key of the grouping pass: bump it when the prompt below changes. */
+export const GROUP_TOPICS_PROMPT_VERSION = 3;
 
-You receive a list of topics, each with its category and the number of reviews. Many of them are
-different wordings of the same thing. Merge those into groups:
-- group only topics that mean the same specific problem, request or praise, and only within one category;
-- label: the clearest short wording for the group, in ${TOPIC_LANGUAGE}, lowercase, 2–5 words;
-- indexes: the indexes of the topics merged into the group;
-- leave a topic out when nothing else matches it — do not force unrelated topics together.`;
+export const GROUP_TOPICS_SYSTEM_PROMPT = `You turn raw topic labels of app reviews into a short list of themes.
+
+You receive the topics of one review category, each with the number of reviews. The labels were
+written independently, so one problem appears under many wordings and at different levels of detail.
+Build the themes a product manager would use to triage this feedback:
+- Put every topic into exactly one theme. Never leave a topic out.
+- Aim for 3 to 7 themes; with only a few topics there can be fewer.
+- A theme unites topics about the same part of the product or the same kind of complaint, even when
+  the details differ: every crash, freeze and forced restart is one theme; every "subscription costs
+  too much" wording is one theme; every request for a reading-comfort setting is one theme.
+- Keep really different problems apart: a crash, a login failure and lost data are three themes.
+- Do not create a vague catch-all such as "other problems" unless the topics truly share nothing.
+- label: what is wrong or what is asked for, in ${TOPIC_LANGUAGE}, lowercase, 2–4 words, concrete
+  ("вильоти й зависання", "дорога підписка", "налаштування читалки"). Not the category name.
+- indexes: the indexes of all topics that belong to the theme.`;
 
 export function buildGroupTopicsMessage(items: TopicItem[]): string {
-  return `Merge the topics that mean the same:\n${JSON.stringify(items, null, 1)}`;
+  return `Group these topics into themes:\n${JSON.stringify(items)}`;
 }
 
 export const CHAT_SYSTEM_PROMPT = `You are an analyst who helps a non-technical person understand app reviews.
