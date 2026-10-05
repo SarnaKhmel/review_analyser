@@ -5,6 +5,12 @@ import type { Review } from "../types";
 /** Topic labels are shown in the UI and must be comparable, so they are always in one language. */
 const TOPIC_LANGUAGE = "Ukrainian";
 
+/**
+ * Part of the classification cache key: bump it when the prompt below changes, otherwise
+ * reviews classified by the old prompt keep being served from the cache.
+ */
+export const CLASSIFY_PROMPT_VERSION: number = 1;
+
 export const CLASSIFY_SYSTEM_PROMPT = `You classify mobile app reviews. Reviews can be in any language.
 
 For every review return:

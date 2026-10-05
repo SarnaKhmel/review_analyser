@@ -4,7 +4,7 @@ import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { ClassificationCache } from "../src/llm/ClassificationCache";
 import type { LlmClient } from "../src/llm/LlmClient";
-import { FALLBACK, ReviewClassifier } from "../src/llm/ReviewClassifier";
+import { classifyCacheScope, FALLBACK, ReviewClassifier } from "../src/llm/ReviewClassifier";
 import type { Review } from "../src/types";
 
 const GOOD = { sentiment: "negative", category: "bug", severity: "high", intensity: "strong", topic: "crash" } as const;
@@ -132,5 +132,12 @@ describe("ReviewClassifier", () => {
     expect(stats).toMatchObject({ fromLlm: 0, fallbacks: 2, llmCalls: 2 });
     expect(reviews[0]).toMatchObject(FALLBACK);
     expect(await cache.get("review number 0")).toBeUndefined();
+  });
+
+  it("changes the cache scope when the prompt version is bumped", () => {
+    // Version 1 keeps the scope as is: entries cached before versioning stay valid.
+    expect(classifyCacheScope("model-a", 1)).toBe("model-a");
+    expect(classifyCacheScope("model-a", 2)).not.toBe(classifyCacheScope("model-a", 1));
+    expect(classifyCacheScope("model-a", 2)).not.toBe(classifyCacheScope("model-a", 3));
   });
 });

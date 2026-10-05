@@ -1,6 +1,7 @@
 import type { Classification, ClassifiedReview, ClassifyStats, Review } from "../types";
 import type { ClassificationCache } from "./ClassificationCache";
 import type { LlmClient } from "./LlmClient";
+import { CLASSIFY_PROMPT_VERSION } from "./prompts";
 import { batchSchema } from "./schema";
 
 /** Used when the LLM output stays invalid after a retry. Never written to the cache. */
@@ -13,6 +14,14 @@ export const FALLBACK: Classification = {
 };
 
 const MAX_ATTEMPTS = 2;
+
+/**
+ * Cache scope = model + prompt version. Version 1 adds nothing, so the entries written
+ * before the version existed stay valid.
+ */
+export function classifyCacheScope(modelScope = "", promptVersion = CLASSIFY_PROMPT_VERSION): string {
+  return promptVersion === 1 ? modelScope : `${modelScope}|prompt-v${promptVersion}`;
+}
 
 type Options = { batchSize: number; concurrency: number; cacheScope?: string };
 
@@ -28,6 +37,7 @@ export class ReviewClassifier {
     reviews: Review[],
     onProgress?: (classified: ClassifiedReview[]) => void,
   ): Promise<{ reviews: ClassifiedReview[]; stats: ClassifyStats }> {
+    const cacheScope = classifyCacheScope(this.options.cacheScope);
     const stats: ClassifyStats = {
       total: reviews.length,
       fromCache: 0,
@@ -40,7 +50,7 @@ export class ReviewClassifier {
     // 1. Cache: only reviews we have not seen before go to the LLM.
     const pending: Review[] = [];
     for (const review of reviews) {
-      const cached = await this.cache.get(review.text, this.options.cacheScope);
+      const cached = await this.cache.get(review.text, cacheScope);
       if (cached) {
         classified.set(review.id, cached);
         stats.fromCache++;
@@ -65,7 +75,7 @@ export class ReviewClassifier {
           for (const review of batch) {
             const result = results.get(review.id);
             if (result) {
-              await this.cache.set(review.text, result, this.options.cacheScope);
+              await this.cache.set(review.text, result, cacheScope);
               stats.fromLlm++;
             } else {
               stats.fallbacks++;
