@@ -25,7 +25,10 @@ export class TopicGrouper {
     private readonly cacheScope: string,
   ) {}
 
-  async group(reviews: ClassifiedReview[]): Promise<{ reviews: ClassifiedReview[]; llmCalls: number }> {
+  async group(
+    reviews: ClassifiedReview[],
+    signal?: AbortSignal,
+  ): Promise<{ reviews: ClassifiedReview[]; llmCalls: number }> {
     const cache = await this.readCache();
     const merged: Mapping = {};
     let llmCalls = 0;
@@ -34,6 +37,8 @@ export class TopicGrouper {
     // made reasoning models run out of output before they wrote the answer.
     for (const items of topicsByCategory(reviews)) {
       if (items.length < 2) continue;
+      // Aborted: start no new requests, but still save the categories that are done.
+      if (signal?.aborted) break;
 
       const cacheKey = createHash("sha256")
         .update(`${GROUP_TOPICS_PROMPT_VERSION}\n${this.cacheScope}\n${JSON.stringify(items.map(keyOf))}`)
@@ -53,6 +58,7 @@ export class TopicGrouper {
       await mkdir(path.dirname(this.cacheFile), { recursive: true });
       await writeFile(this.cacheFile, JSON.stringify(cache));
     }
+    signal?.throwIfAborted();
 
     return {
       reviews: reviews.map((review) => ({ ...review, topic: merged[keyOf(review)] ?? review.topic })),

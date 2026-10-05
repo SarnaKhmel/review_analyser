@@ -109,12 +109,22 @@ export function createApp(service: AnalysisService) {
     res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");
     res.flushHeaders();
-    const send = (event: AnalyzeEvent) => res.write(`${JSON.stringify(event)}\n`);
+
+    // The client left before the end (closed the tab, reloaded): stop spending LLM calls on
+    // a result nobody will read.
+    const abort = new AbortController();
+    res.on("close", () => {
+      if (!res.writableEnded) abort.abort();
+    });
+    const send = (event: AnalyzeEvent) => {
+      if (!abort.signal.aborted) res.write(`${JSON.stringify(event)}\n`);
+    };
 
     try {
-      const result = await service.analyze(url, limit, { lang, country }, llm, send);
+      const result = await service.analyze(url, limit, { lang, country }, llm, send, abort.signal);
       send({ type: "done", result });
     } catch (error) {
+      if (abort.signal.aborted) return;
       // The response has already started, so the failure travels as an event, not a status code.
       send({ type: "error", error: describeError(error)[1] });
     }

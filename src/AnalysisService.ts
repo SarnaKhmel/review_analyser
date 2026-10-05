@@ -70,23 +70,28 @@ export class AnalysisService {
     requested: Partial<Locale> = {},
     llmSettings?: LlmSettings,
     onProgress?: (event: AnalyzeProgress) => void,
+    /** Aborted when the caller no longer needs the result: no further LLM requests are started. */
+    signal?: AbortSignal,
   ): Promise<AnalyzeResponse> {
     // Resolved first: a misconfigured LLM should fail before any reviews are downloaded.
     const { llm, cacheScope } = this.deps.createLlm(llmSettings);
     const { appId, locale, ...fetched } = await this.collect(urlOrAppId, limit, requested);
+    signal?.throwIfAborted();
     const total = fetched.reviews.length;
     onProgress?.({ type: "collected", appId, source: fetched.source, warning: fetched.warning, total });
 
     const classified = await this.deps
       .createClassifier(llm, cacheScope)
-      .classify(fetched.reviews, (reviews) =>
-        onProgress?.({ type: "progress", appId, done: reviews.length, total, reviews }),
+      .classify(
+        fetched.reviews,
+        (reviews) => onProgress?.({ type: "progress", appId, done: reviews.length, total, reviews }),
+        signal,
       );
     const { stats } = classified;
 
     // Second pass: the same problem is often worded differently, merge such topics.
     onProgress?.({ type: "grouping", appId, total, reviews: classified.reviews });
-    const grouped = await this.deps.createTopicGrouper(llm, cacheScope).group(classified.reviews);
+    const grouped = await this.deps.createTopicGrouper(llm, cacheScope).group(classified.reviews, signal);
     stats.llmCalls += grouped.llmCalls;
 
     const reviews = grouped.reviews;

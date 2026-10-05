@@ -140,4 +140,24 @@ describe("ReviewClassifier", () => {
     expect(classifyCacheScope("model-a", 2)).not.toBe(classifyCacheScope("model-a", 1));
     expect(classifyCacheScope("model-a", 2)).not.toBe(classifyCacheScope("model-a", 3));
   });
+
+  it("starts no new batches after an abort, and keeps the finished ones in the cache", async () => {
+    const abort = new AbortController();
+    const llm = new FakeLlm();
+    const cache = new ClassificationCache(cacheFile);
+    const classifier = new ReviewClassifier(llm, cache, options);
+
+    // 45 reviews = 5 batches in groups of 2; the client leaves during the first group.
+    const run = classifier.classify(
+      makeReviews(45),
+      (classified) => {
+        if (classified.length > 0) abort.abort();
+      },
+      abort.signal,
+    );
+
+    await expect(run).rejects.toMatchObject({ name: "AbortError" });
+    expect(llm.calls).toHaveLength(2);
+    expect(await new ClassificationCache(cacheFile).get("review number 0")).toMatchObject(GOOD);
+  });
 });

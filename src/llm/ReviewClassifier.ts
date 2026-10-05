@@ -32,10 +32,14 @@ export class ReviewClassifier {
     private readonly options: Options,
   ) {}
 
-  /** `onProgress` receives the reviews classified so far: after the cache lookup and after every batch. */
+  /**
+   * `onProgress` receives the reviews classified so far: after the cache lookup and after every batch.
+   * Rejects with the signal's reason when `signal` is aborted between batch groups.
+   */
   async classify(
     reviews: Review[],
     onProgress?: (classified: ClassifiedReview[]) => void,
+    signal?: AbortSignal,
   ): Promise<{ reviews: ClassifiedReview[]; stats: ClassifyStats }> {
     const cacheScope = classifyCacheScope(this.options.cacheScope);
     const stats: ClassifyStats = {
@@ -69,6 +73,9 @@ export class ReviewClassifier {
     // 2. Batching: one request per `batchSize` reviews, a few requests in parallel.
     const batches = chunk(pending, this.options.batchSize);
     for (const group of chunk(batches, this.options.concurrency)) {
+      // Nobody is waiting for the result any more: start no new requests. The groups that
+      // already finished are in the cache, so a repeated run does not pay for them again.
+      signal?.throwIfAborted();
       await Promise.all(
         group.map(async (batch) => {
           const results = await this.classifyBatch(batch, stats);
