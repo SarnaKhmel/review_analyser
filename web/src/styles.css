@@ -84,7 +84,7 @@ section {
   background: var(--surface);
 }
 
-.row {
+.form-row {
   display: flex;
   gap: 8px;
 }
@@ -278,7 +278,7 @@ pre {
 }
 
 @media (max-width: 520px) {
-  .row {
+  .form-row {
     flex-direction: column;
   }
 

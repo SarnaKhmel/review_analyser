@@ -44,7 +44,7 @@ export function ReviewsTab({ url, onUrl, locale, onLocale, collected, onCollecte
       <section>
         <h2>Завантаження відгуків</h2>
         <p className="muted">Лише збір із Google Play, без ШІ — ключ API не потрібен.</p>
-        <form className="row" onSubmit={handleSubmit}>
+        <form className="form-row" onSubmit={handleSubmit}>
           <input
             type="text"
             value={url}

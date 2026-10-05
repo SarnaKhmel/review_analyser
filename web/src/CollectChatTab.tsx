@@ -73,7 +73,7 @@ export function CollectChatTab({
     <>
       <section>
         <h2>1. Застосунок</h2>
-        <form className="row" onSubmit={handleAnalyze}>
+        <form className="form-row" onSubmit={handleAnalyze}>
           <input
             type="text"
             value={url}
@@ -140,7 +140,7 @@ export function CollectChatTab({
           </ul>
         )}
 
-        <form className="row" onSubmit={handleAsk}>
+        <form className="form-row" onSubmit={handleAsk}>
           <input
             type="text"
             value={question}
