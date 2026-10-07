@@ -8,6 +8,10 @@ import { StaticSource } from "./sources/StaticSource";
 import { KvStore } from "./storage/TextStore";
 import type { StoredAnalysis } from "./AnalysisService";
 
+// The public deployment never spends a server-side LLM key, even if one is set as a secret:
+// every visitor brings their own AI through the settings tab.
+delete process.env.ANTHROPIC_API_KEY;
+
 // Cloudflare Workers entry: the same Express app, with KV in place of the local disk.
 // An isolate can be recycled between requests, so nothing may live only in memory.
 const service = createAnalysisService({

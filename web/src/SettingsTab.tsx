@@ -25,6 +25,12 @@ export function SettingsTab({ settings, onChange }: Props) {
     getHealth().then(setHealth, () => setHealth(null));
   }, []);
 
+  // No key on the server (always so in the public deployment): the option is not offered.
+  const serverUnavailable = health?.serverLlmConfigured === false;
+  useEffect(() => {
+    if (serverUnavailable && settings.provider === "server") onChange({ ...settings, provider: "claude" });
+  }, [serverUnavailable, settings, onChange]);
+
   const [models, setModels] = useState<string[]>([]);
   const [modelsNote, setModelsNote] = useState<string | null>(null);
 
@@ -69,24 +75,22 @@ export function SettingsTab({ settings, onChange }: Props) {
         </p>
 
         <div className="options">
-          <label>
-            <input
-              type="radio"
-              name="provider"
-              checked={settings.provider === "server"}
-              onChange={() => update({ provider: "server" })}
-            />
-            <span>
-              Claude, ключ сервера
-              <small className="muted">
-                {health === null
-                  ? "Стан сервера невідомий"
-                  : health.serverLlmConfigured
-                    ? `Налаштовано, модель ${health.serverModel}`
-                    : "На сервері ключа немає — оберіть інший варіант"}
-              </small>
-            </span>
-          </label>
+          {!serverUnavailable && (
+            <label>
+              <input
+                type="radio"
+                name="provider"
+                checked={settings.provider === "server"}
+                onChange={() => update({ provider: "server" })}
+              />
+              <span>
+                Claude, ключ сервера
+                <small className="muted">
+                  {health === null ? "Стан сервера невідомий" : `Налаштовано, модель ${health.serverModel}`}
+                </small>
+              </span>
+            </label>
+          )}
           <label>
             <input
               type="radio"
