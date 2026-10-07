@@ -1,190 +1,192 @@
 # Review Insights
 
-Вставляєте посилання на застосунок у Google Play — отримуєте відповідь на питання «на що скаржаться користувачі й що лагодити першим».
+Paste a link to a Google Play app and find out what users complain about and what to fix first.
 
-Review Insights збирає відгуки, класифікує кожен через LLM (тональність, категорія проблеми, серйозність, тема), показує аналітику і відповідає на питання до даних звичайною мовою.
+Review Insights collects the reviews, classifies each one with an LLM (sentiment, problem category, severity, topic), shows analytics, and answers questions about the data in plain language.
 
-Тренувальний MVP. Автор: Олекса Сарнацький.
+A training MVP. Author: Oleksa Sarnatskyi.
 
-## Що вміє
+> The interface is in Ukrainian. Tab and button names below are given in English with the original label in brackets.
 
-- **Збір відгуків** за посиланням або `appId`, однією мовою чи одразу десятьма.
-- **Класифікація через ШІ**: позитив / нейтрал / негатив, категорія проблеми, серйозність, коротка тема.
-- **Аналітика з фільтрами**: категорії, емоції, оцінки, теми, топ болів із чернеткою тікета.
-- **Чат**: «що найбільше дратує користувачів після останнього оновлення?» — відповідь із числами й цитатами.
-- **Будь-яка ШІ**: Claude або OpenAI-сумісний API (Ollama, Groq, Gemini, OpenRouter, OpenAI).
+## What it does
 
-## Швидкий старт
+- **Collects reviews** by link or `appId`, in one language or in ten at once.
+- **Classifies them with AI**: positive / neutral / negative, problem category, severity, a short topic.
+- **Analytics with filters**: categories, emotions, ratings, topics, top pains with a ticket draft.
+- **Chat**: "what annoys users most after the last update?" — answered with numbers and quotes.
+- **Any AI**: Claude or an OpenAI-compatible API (Ollama, Groq, Gemini, OpenRouter, OpenAI).
 
-Потрібен Node.js 22 або новіший.
+## Quick start
+
+Requires Node.js 22 or newer.
 
 ```bash
-npm install                # залежності бека і фронта (web/)
-cp .env.example .env       # вписати ANTHROPIC_API_KEY
-npm run dev                # API на :3001, UI на http://localhost:5173
+npm install                # backend and frontend (web/) dependencies
+cp .env.example .env       # fill in ANTHROPIC_API_KEY
+npm run dev                # API on :3001, UI on http://localhost:5173
 ```
 
-Ключа немає? Збір відгуків працює і без нього, а для аналізу можна вказати власну ШІ на вкладці «Налаштування».
+No key? Collecting reviews works without one, and for the analysis you can connect your own AI on the Settings tab («Налаштування»).
 
-| Команда | Що робить |
+| Command | What it does |
 | --- | --- |
-| `npm run dev` | Бек і фронт для розробки |
-| `npm run cli -- <посилання або appId> [кількість] [мова] [країна]` | Той самий аналіз у консолі, без UI |
-| `npm run collect -- <посилання або appId> [кількість] [мова] [країна]` | Лише збір, без LLM і без ключа; зберігає у `data/reviews/<appId>.json` |
-| `npm test` | Юніт-тести (LLM замінено фейком, ключ не потрібен) |
-| `npm run typecheck` | Перевірка типів бека і фронта |
-| `npm run dev:worker` | Запуск так, як на Cloudflare: http://localhost:8787 |
-| `npm run deploy` | Збірка фронта і деплой на Cloudflare вручну |
+| `npm run dev` | Backend and frontend for development |
+| `npm run cli -- <link or appId> [count] [language] [country]` | The same analysis in the console, without the UI |
+| `npm run collect -- <link or appId> [count] [language] [country]` | Collection only, no LLM and no key; saves to `data/reviews/<appId>.json` |
+| `npm test` | Unit tests (the LLM is replaced with a fake, no key needed) |
+| `npm run typecheck` | Type check of the backend and the frontend |
+| `npm run dev:worker` | Run it the way Cloudflare does: http://localhost:8787 |
+| `npm run deploy` | Build the frontend and deploy to Cloudflare by hand |
 
-## Деплой на Cloudflare
+## Deploying to Cloudflare
 
-Застосунок живе в одному Cloudflare Worker на безкоштовному тарифі: Worker віддає зібраний фронт як статику і обслуговує `/api/*` тим самим Express-застосунком. Замість диска — Workers KV.
+The app lives in a single Cloudflare Worker on the free plan: the Worker serves the built frontend as static assets and handles `/api/*` with the same Express app. Workers KV takes the place of the disk.
 
-### Автоматично, при мерджі в `main`
+### Automatically, on merge to `main`
 
-GitHub Actions (`.github/workflows/deploy.yml`) на кожен pull request запускає перевірку типів і тести, а після мерджу в `main` ще й деплоїть.
+GitHub Actions (`.github/workflows/deploy.yml`) runs the type check and the tests on every pull request, and after a merge to `main` it also deploys.
 
-Налаштувати треба один раз:
+One-time setup:
 
-1. Зареєструватися на [dash.cloudflare.com](https://dash.cloudflare.com) і скопіювати **Account ID** (сторінка Workers & Pages, права колонка).
-2. Створити API-токен: **My Profile → API Tokens → Create Token**, шаблон **Edit Cloudflare Workers**.
-3. У репозиторії на GitHub відкрити **Settings → Secrets and variables → Actions** і додати два секрети:
-   - `CLOUDFLARE_API_TOKEN` — токен із кроку 2;
-   - `CLOUDFLARE_ACCOUNT_ID` — ідентифікатор із кроку 1.
+1. Sign up at [dash.cloudflare.com](https://dash.cloudflare.com) and copy the **Account ID** (Workers & Pages page, right column).
+2. Create an API token: **My Profile → API Tokens → Create Token**, template **Edit Cloudflare Workers**.
+3. In the GitHub repository open **Settings → Secrets and variables → Actions** and add two secrets:
+   - `CLOUDFLARE_API_TOKEN` — the token from step 2;
+   - `CLOUDFLARE_ACCOUNT_ID` — the identifier from step 1.
 
-Після першого деплою застосунок доступний за адресою `https://review-analyser.<ваш-піддомен>.workers.dev` — точну адресу видно в журналі кроку деплою. Сховище KV створюється саме під час першого деплою.
+After the first deploy the app is available at `https://review-analyser.<your-subdomain>.workers.dev` — the exact address is printed in the log of the deploy step. The KV namespace is created during that first deploy.
 
-### Вручну
+### By hand
 
 ```bash
 npx wrangler login
 npm run deploy
 ```
 
-### Без ключів на сервері
+### No keys on the server
 
-Задеплоєний застосунок не тримає жодного ключа ШІ: кожен відвідувач вказує власний API на вкладці «Налаштування» (ключ Claude або будь-який OpenAI-сумісний API). Варіанта «ключ сервера» там немає, а Worker ігнорує `ANTHROPIC_API_KEY`, навіть якщо його додати секретом. Тож публічна адреса не може витратити чужі гроші.
+The deployed app holds no AI key at all: every visitor connects their own API on the Settings tab (a Claude key or any OpenAI-compatible API). The "server key" option is not offered there, and the Worker ignores `ANTHROPIC_API_KEY` even if it is added as a secret. So the public address cannot spend anyone else's money.
 
-Єдині секрети проєкту — `CLOUDFLARE_API_TOKEN` і `CLOUDFLARE_ACCOUNT_ID` у GitHub: вони потрібні лише, щоб GitHub Actions міг викласти код, і в сам застосунок не потрапляють.
+The only secrets of the project are `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in GitHub: they exist only so that GitHub Actions can publish the code, and they never reach the app itself.
 
-### Обмеження безкоштовного тарифу
+### Free plan limits
 
-- **50 зовнішніх запитів на один запит до Worker.** Аналіз однією мовою вкладається навіть на 500 відгуках. «Усі мови» з великою кількістю відгуків можуть не вкластися: кожна мова — це окремі запити до Google Play.
-- **10 мс процесорного часу на запит.** Очікування відповіді від LLM сюди не входить, але на великих вибірках ліміт варто перевірити на практиці.
-- **1000 записів у KV на добу.** Один аналіз робить до трьох записів.
-- Google Play може відповідати серверам Cloudflare інакше, ніж домашньому комп'ютеру. Якщо збір не вдався, застосунок показує демо-дані й попередження.
+- **50 outgoing requests per request to the Worker.** An analysis in one language fits even at 500 reviews. "All languages" with a large number of reviews may not fit: every language means separate requests to Google Play.
+- **10 ms of CPU time per request.** Waiting for the LLM does not count, but on large samples the limit is worth checking in practice.
+- **1000 KV writes per day.** One analysis makes up to three writes.
+- Google Play may answer Cloudflare's servers differently than a home computer. If collection fails, the app shows demo data and a warning.
 
-## Власна ШІ користувача
+## The user's own AI
 
-На вкладці «Налаштування» користувач обирає, яка ШІ класифікує відгуки й відповідає в чаті:
+On the Settings tab the user chooses which AI classifies the reviews and answers in the chat:
 
-- **Claude, ключ сервера** — `ANTHROPIC_API_KEY` з `.env`. Лише для локального запуску.
-- **Claude, свій ключ.**
-- **Інша ШІ** — будь-який OpenAI-сумісний API: адреса, назва моделі і, за потреби, ключ. Є готові адреси для Ollama, Groq, Gemini, OpenRouter, OpenAI.
+- **Claude, server key** — `ANTHROPIC_API_KEY` from `.env`. Local runs only.
+- **Claude, own key.**
+- **Another AI** — any OpenAI-compatible API: address, model name and, if needed, a key. Ready-made addresses are provided for Ollama, Groq, Gemini, OpenRouter and OpenAI.
 
-Налаштування лежать у `localStorage` браузера і надсилаються в тілі кожного запиту (`llm`); сервер створює під них клієнта через `createLlm` і ніде їх не зберігає. Кнопка «Перевірити підключення» робить один короткий запит до обраної ШІ.
+The settings live in the browser's `localStorage` and are sent in the body of every request (`llm`); the server builds a client for them through `createLlm` and stores them nowhere. The "Test connection" button («Перевірити підключення») makes one short request to the chosen AI.
 
-Безкоштовні тарифи провайдерів мають жорсткі ліміти (наприклад, Groq: 8000 токенів на хвилину), тому:
+Providers' free tiers have strict limits (for example, Groq: 8000 tokens per minute), so:
 
-- на відповідь 429 клієнт чекає стільки, скільки просить провайдер у заголовку `Retry-After`, і повторює запит (до 5 разів);
-- чат для таких провайдерів отримує меншу вибірку відгуків (`chatContextChars` у `src/config.ts`);
-- назву моделі можна не знати: кнопка «Підібрати модель автоматично» бере список із `GET /models` провайдера, відкидає нетекстові моделі й обирає першу, яка справді відповіла на тестовий запит;
-- якщо провайдер відхиляє запит у JSON-режимі (Groq інколи повертає 400 `json_validate_failed`), пачка перезапитується звичайним текстом.
+- on a 429 the client waits as long as the provider asks in the `Retry-After` header and repeats the request (up to 5 times);
+- the chat sends such providers a smaller sample of reviews (`chatContextChars` in `src/config.ts`);
+- you do not have to know the model name: the "Pick a model automatically" button («Підібрати модель автоматично») takes the list from the provider's `GET /models`, drops non-text models and picks the first one that actually answered a test request;
+- if the provider rejects a request in JSON mode (Groq sometimes returns 400 `json_validate_failed`), the batch is asked again as plain text.
 
-Для OpenAI-сумісних API формат відповіді описано в промпті, а в API запитується лише валідний JSON (`response_format: json_object`), бо підтримка JSON-схем у провайдерів різна. Далі працює той самий guardrail: Zod-валідація, ретрай, fallback. Кеш класифікацій окремий для кожної моделі.
+For OpenAI-compatible APIs the response format is described in the prompt, and the API is only asked for valid JSON (`response_format: json_object`), because support for JSON schemas differs between providers. After that the same guardrail applies: Zod validation, retry, fallback. The classification cache is separate for every model.
 
-Локально API слухає лише `127.0.0.1`; змінна `HOST=0.0.0.0` відкриває його для мережі. Сервер звертається за адресою API, яку назвав клієнт, тому у власній мережі відкривати його назовні без білого списку адрес не варто (SSRF). На Cloudflare Worker не має доступу до приватних мереж, але ключ користувача однаково лежить у `localStorage` — для продакшену це слабке місце.
+Locally the API listens on `127.0.0.1` only; `HOST=0.0.0.0` opens it to the network. The server calls whatever API address the client names, so do not expose it from your own network without an allowlist of addresses (SSRF). On Cloudflare the Worker has no access to private networks, but the user's key still sits in `localStorage` — a weak spot for production.
 
-## Мова і країна відгуків
+## Review language and country
 
-Google Play віддає окремий набір відгуків для кожної мови. Мова визначається в такому порядку: явний вибір у запиті (`lang`) → параметр `hl` у посиланні → типова `en`. Країна (`country` / `gl`) теж передається скраперу, але в UI її немає: на практиці набір відгуків визначає мова.
+Google Play serves a separate set of reviews for every language. The language is resolved in this order: explicit choice in the request (`lang`) → the `hl` parameter of the link → the default `en`. The country (`country` / `gl`) is passed to the scraper too, but the UI does not show it: in practice the language determines the set of reviews.
 
-Значення `all` («Усі мови» в UI) робить окремий запит на кожну мову зі списку `allLanguages` у `src/config.ts`, зливає результати за id і лишає найновіші в межах ліміту (`MergedSource`). «Будь-яка мова» одним запитом у Google Play не існує.
+The value `all` ("All languages" in the UI) makes a separate request for every language listed in `allLanguages` in `src/config.ts`, merges the results by id and keeps the newest ones within the limit (`MergedSource`). Google Play has no single "any language" request.
 
-Мова тут — це мова, до якої Google відніс відгук, а не обов'язково мова тексту. Для застосунку з українською аудиторією в «англійському» наборі більшість текстів однаково українські.
+Language here means the language Google assigned to the review, not necessarily the language of the text. For an app with a Ukrainian audience, most texts in the "English" set are Ukrainian anyway.
 
-## Аналітика
+## Analytics
 
-Вкладка «Аналітика» рахує все в браузері з класифікованих відгуків тією самою чистою функцією `aggregate`, що й сервер, тому фільтри працюють миттєво й без запитів.
+The Analytics tab («Аналітика») computes everything in the browser from the classified reviews with the same pure `aggregate` function the server uses, so the filters work instantly and without requests.
 
-- **Фільтри:** категорія, емоція, серйозність, оцінка, тема. Лічильник біля кожного варіанта враховує решту обраних фільтрів.
-- **Теми.** Окрім фіксованої категорії, ШІ дає кожному відгуку коротку тему («виліт додатку», «дорога підписка»). Пачки класифікуються незалежно, тому одна проблема приходить у різних формулюваннях; другий прохід (`TopicGrouper`, один запит на категорію, результат кешується) збирає їх у 3–7 тем на категорію. Якщо обрати категорію «Помилки», теми стають типами помилок, якщо «Бракує функцій» — запитами на покращення.
-- **Емоції.** Поле `intensity` (mild / moderate / strong) разом із тональністю дає сім рівнів від «Розлючені» до «У захваті». Середній настрій за шкалою від −3 до +3 обирає одне з чотирьох облич (`MoodFace`, намальовані в SVG).
-- **Графіки** зроблені на HTML/CSS без бібліотек. Усі кодують тональність однаково: синій — позитив, сірий — нейтрал, червоний — негатив.
-- **Топ болі** — до 15 конкретних проблем (категорія + тема), впорядкованих за вагою серйозності, з повними текстами відгуків і чернеткою тікета.
+- **Filters:** category, emotion, severity, rating, topic. The counter next to each option takes the other selected filters into account.
+- **Topics.** Besides the fixed category, the AI gives every review a short topic ("app crash", "expensive subscription"). Batches are classified independently, so one problem arrives under several wordings; a second pass (`TopicGrouper`, one request per category, the result is cached) merges them into 3–7 topics per category. Choose the "Bugs" category and the topics become kinds of bugs; choose "Missing features" and they become improvement requests.
+- **Emotions.** The `intensity` field (mild / moderate / strong) together with the sentiment gives seven levels from "Furious" to "Delighted". The average mood on a scale from −3 to +3 picks one of four faces (`MoodFace`, drawn in SVG).
+- **Charts** are built with HTML/CSS, without libraries. All of them encode sentiment the same way: blue for positive, grey for neutral, red for negative.
+- **Top pains** — up to 15 specific problems (category + topic), ordered by severity weight, with the full review texts and a ticket draft.
 
-## Як працює LLM-обробка
+## How the LLM processing works
 
-1. **Кеш.** Для кожного відгуку рахується sha256 тексту. Що вже є в кеші, до LLM не йде.
-2. **Батчинг.** Решта ріжеться на пачки по 20, до 4 пачок паралельно. 100 нових відгуків = 5 запитів замість 100.
-3. **Structured output.** Запит іде з `output_config.format` — API обмежує відповідь JSON-схемою, згенерованою з Zod.
-4. **Валідація.** Відповідь додатково перевіряється `batchSchema.safeParse`, а результати зіставляються з відгуками за `index`.
-5. **Ретрай.** Якщо відповідь невалідна або частину відгуків пропущено, робиться ще один запит лише для тих, що лишилися.
-6. **Fallback.** Що не вдалося і вдруге, отримує `neutral / other / low`. Такі результати не кешуються, тож наступного разу буде нова спроба. Їх кількість видно в UI («не вдалося класифікувати»).
+1. **Cache.** A sha256 of the text is computed for every review. Whatever is already in the cache does not go to the LLM.
+2. **Batching.** The rest is cut into batches of 20, up to 4 batches in parallel. 100 new reviews = 5 requests instead of 100.
+3. **Structured output.** The request carries `output_config.format` — the API constrains the answer to a JSON schema generated from Zod.
+4. **Validation.** The answer is additionally checked with `batchSchema.safeParse`, and the results are matched to the reviews by `index`.
+5. **Retry.** If the answer is invalid or some reviews are missing, one more request is made for the remaining ones only.
+6. **Fallback.** Whatever fails a second time gets `neutral / other / low`. Such results are not cached, so the next run tries again. Their count is shown in the UI ("could not classify").
 
-Ключ кешу враховує модель і версію промпту: після зміни `CLASSIFY_SYSTEM_PROMPT` треба збільшити `CLASSIFY_PROMPT_VERSION` у `src/llm/prompts.ts`, інакше вже бачені відгуки лишаться зі старою класифікацією.
+The cache key includes the model and the prompt version: after changing `CLASSIFY_SYSTEM_PROMPT`, bump `CLASSIFY_PROMPT_VERSION` in `src/llm/prompts.ts`, otherwise reviews seen before keep their old classification.
 
-Якщо клієнт розірвав з'єднання з `/api/analyze/stream` (закрив вкладку), сервер не починає нових запитів до LLM; уже завершені пачки лишаються в кеші.
+If the client drops the connection to `/api/analyze/stream` (closes the tab), the server starts no new LLM requests; the batches already finished stay in the cache.
 
-Помилки самого API (немає ключа, 401, 429, мережа) не маскуються під fallback: користувач бачить зрозуміле повідомлення.
+Errors of the API itself (no key, 401, 429, network) are not disguised as a fallback: the user sees a clear message.
 
-### Відтворюваність без temperature
+### Reproducibility without temperature
 
-У ТЗ закладено «низьку temperature». На актуальних моделях Claude (Opus 4.7 і новіші) параметри семплінгу прибрано: запит із `temperature` повертає 400. Відтворюваність тут дають фіксований промпт, жорстка схема з enum-ами і кеш (той самий текст завжди має той самий результат). Витрати обмежує `effort: "low"`.
+The spec called for a "low temperature". Current Claude models (Opus 4.7 and newer) no longer accept sampling parameters: a request with `temperature` returns 400. Reproducibility here comes from a fixed prompt, a strict schema with enums, and the cache (the same text always gets the same result). `effort: "low"` keeps the cost down.
 
-Модель за замовчуванням — `claude-opus-5-5`, змінюється через `ANTHROPIC_MODEL`. Якщо обрати Haiku 4.5, з `ClaudeClient` треба прибрати `effort` (ця модель його не підтримує).
+The default model is `claude-opus-5-5`; change it with `ANTHROPIC_MODEL`. If you choose Haiku 4.5, remove `effort` from `ClaudeClient` (that model does not support it).
 
-## Чат
+## Chat
 
-`POST /api/chat` не надсилає моделі всі відгуки. У запит ідуть агрегати (таблиця, категорії, топ-проблеми) і вибірка найсерйозніших відгуків у межах бюджету символів (кожен обрізаний до 400). Так запит лишається малим, а модель цитує точні числа.
+`POST /api/chat` does not send the model every review. The request carries the aggregates (table, categories, top problems) and a sample of the most severe reviews within a character budget (each cut to 400). The request stays small, and the model quotes exact numbers.
 
-Чат відповідає за останнім аналізом застосунку. Локально він зберігається в пам'яті процесу: після перезапуску сервера застосунок треба проаналізувати ще раз (класифікації при цьому візьмуться з кешу). На Cloudflare — у KV, тож переживає перезапуски.
+The chat answers from the latest analysis of the app. Locally it is kept in the process memory: after a server restart the app has to be analysed again (the classifications come from the cache). On Cloudflare it is kept in KV, so it survives restarts.
 
-## Архітектура
+## Architecture
 
 ```
 src/
-  types.ts            доменні типи, спільні для бека і фронта
-  sources/            звідки беруться відгуки
+  types.ts            domain types shared by the backend and the frontend
+  sources/            where reviews come from
     ReviewSource.ts     interface ReviewSource { fetch(): Promise<Review[]> }
     GooglePlaySource.ts google-play-scraper
-    FileSource.ts       локальний JSON (fallback)
-    StaticSource.ts     ті самі демо-дані, вшиті в бандл Worker
-    MergedSource.ts     кілька джерел в одному: «усі мови»
-    fetchWithFallback.ts основне джерело → якщо збій або порожньо, демо-дані + попередження
-    extractAppId.ts     посилання Google Play → appId
-    extractLocale.ts    параметри hl/gl посилання → мова і країна
-  llm/                усе, що стосується LLM
-    LlmClient.ts        інтерфейс: classifyBatch + answer
-    ClaudeClient.ts     реалізація на @anthropic-ai/sdk (structured output)
-    OpenAiCompatibleClient.ts будь-який OpenAI-сумісний API
-    createLlm.ts        обирає клієнта під запит: ШІ користувача або типова серверна
-    ReviewClassifier.ts кеш → батчинг → валідація → ретрай → fallback
-    ClassificationCache.ts кеш за sha256 тексту відгуку
-    TopicGrouper.ts     другий прохід: сирі теми → 3–7 тем на категорію
-    schema.ts, prompts.ts Zod-схеми і фіксовані промпти
-    chat.ts             відповідь на питання за агрегатами + вибіркою відгуків
-  storage/TextStore.ts де лежить кеш: файл (локально) або Workers KV (Cloudflare)
-  analytics/          чисті функції без I/O
-    aggregate.ts        тональність × зірки, категорії, топ-проблеми
-    ticket.ts           payload тікета (без виклику Jira)
+    FileSource.ts       local JSON (fallback)
+    StaticSource.ts     the same demo data, bundled into the Worker
+    MergedSource.ts     several sources in one: "all languages"
+    fetchWithFallback.ts primary source → on failure or empty result, demo data + a warning
+    extractAppId.ts     Google Play link → appId
+    extractLocale.ts    hl/gl parameters of the link → language and country
+  llm/                everything about the LLM
+    LlmClient.ts        the interface: classifyBatch + answer
+    ClaudeClient.ts     implementation on @anthropic-ai/sdk (structured output)
+    OpenAiCompatibleClient.ts any OpenAI-compatible API
+    createLlm.ts        picks the client for a request: the user's AI or the server default
+    ReviewClassifier.ts cache → batching → validation → retry → fallback
+    ClassificationCache.ts cache keyed by sha256 of the review text
+    TopicGrouper.ts     second pass: raw topics → 3–7 topics per category
+    schema.ts, prompts.ts Zod schemas and fixed prompts
+    chat.ts             answers a question from the aggregates + a sample of reviews
+  storage/TextStore.ts where the cache lives: a file (locally) or Workers KV (Cloudflare)
+  analytics/          pure functions without I/O
+    aggregate.ts        sentiment × stars, categories, top problems
+    ticket.ts           ticket payload (Jira is not called)
   api/                Express: /api/reviews, /api/analyze, /api/analyze/stream, /api/chat, /api/llm/*
-    server.ts           вхід для Node.js
-  AnalysisService.ts  сценарії: зібрати → класифікувати → агрегувати; чат
-  container.ts        composition root: єдине місце, де обираються конкретні класи
-  worker.ts           вхід для Cloudflare Workers
-  gotFetch.ts         заміна бібліотеки got на fetch у бандлі Worker
-  cli.ts, collect.ts  консольні входи
-web/                  React + Vite: «Збір + чат», «Відгуки», «Аналітика», «Налаштування»
-data/sample-reviews.json  демо-відгуки для fallback
-wrangler.jsonc        конфігурація Cloudflare Worker
+    server.ts           entry point for Node.js
+  AnalysisService.ts  use cases: collect → classify → aggregate; chat
+  container.ts        composition root: the only place where concrete classes are chosen
+  worker.ts           entry point for Cloudflare Workers
+  gotFetch.ts         fetch-based replacement for the got library in the Worker bundle
+  cli.ts, collect.ts  console entry points
+web/                  React + Vite: "Collect + chat", "Reviews", "Analytics", "Settings"
+data/sample-reviews.json  demo reviews for the fallback
+wrangler.jsonc        Cloudflare Worker configuration
 ```
 
-Залежності напрямлені всередину: `AnalysisService` знає лише про інтерфейси `ReviewSource` і `LlmClient`. Тому в тестах LLM підміняється фейком, нове джерело (App Store, CSV) додається новим класом, а перехід з диска на KV зачепив лише `container.ts` і `worker.ts`.
+Dependencies point inwards: `AnalysisService` knows only the `ReviewSource` and `LlmClient` interfaces. That is why the tests swap the LLM for a fake, a new source (App Store, CSV) is added as a new class, and the move from disk to KV touched only `container.ts` and `worker.ts`.
 
-## Свідомо поза MVP
+## Deliberately outside the MVP
 
-- **Jira.** Формується лише payload тікета (видно в UI біля кожної топ-проблеми), API не викликається.
-- **Embeddings.** Групування йде за фіксованими категоріями. Кластеризація через embeddings — наступний крок, щоб знаходити теми всередині категорії.
-- **Refusal fallback.** Якщо модель відмовиться обробити пачку, відгуки отримають fallback-класифікацію; серверний `fallbacks` на іншу модель не підключено.
-- **БД і багатокористувацький режим.** Останній аналіз застосунку спільний для всіх відвідувачів.
+- **Jira.** Only the ticket payload is built (shown in the UI next to every top problem); the API is not called.
+- **Embeddings.** Grouping follows fixed categories. Clustering with embeddings is the next step, to find topics inside a category.
+- **Refusal fallback.** If the model refuses to process a batch, the reviews get the fallback classification; a server-side `fallbacks` to another model is not wired up.
+- **Database and multi-user mode.** The latest analysis of an app is shared by all visitors.
