@@ -1,19 +1,32 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "review-analyser",
-  "main": "src/worker.ts",
-  "compatibility_date": "2026-10-01",
-  // Express and node:crypto run on the Node.js compatibility layer.
-  "compatibility_flags": ["nodejs_compat"],
-  // got does not run on Workers: google-play-scraper gets a fetch-based stand-in instead.
-  "alias": { "got": "./src/gotFetch.ts" },
-  "assets": {
-    "directory": "web/dist",
-    "not_found_handling": "single-page-application",
-    // Everything else is served straight from the static assets, without invoking the Worker.
-    "run_worker_first": ["/api/*"]
-  },
-  // No id: wrangler creates the namespace on the first deploy and reuses it afterwards.
-  "kv_namespaces": [{ "binding": "CACHE" }],
-  "observability": { "enabled": true }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "review-analyser",
+	"main": "src/worker.ts",
+	"compatibility_date": "2026-10-01",
+	// Express and node:crypto run on the Node.js compatibility layer.
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	// got does not run on Workers: google-play-scraper gets a fetch-based stand-in instead.
+	"alias": {
+		"got": "./src/gotFetch.ts"
+	},
+	"assets": {
+		"directory": "web/dist",
+		"not_found_handling": "single-page-application",
+		// Everything else is served straight from the static assets, without invoking the Worker.
+		"run_worker_first": [
+			"/api/*"
+		]
+	},
+	// Created by wrangler on the first deploy; the id is not a secret.
+	"kv_namespaces": [
+		{
+			"binding": "CACHE",
+			"id": "f6fc19b9a4194a039b2e91aea18c8631"
+		}
+	],
+	"observability": {
+		"enabled": true
+	}
 }
