@@ -1,21 +1,25 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { z } from "zod";
 import type { Classification } from "../types";
+import { FileStore, type TextStore } from "../storage/TextStore";
 import { classificationSchema } from "./schema";
 
 const cacheFileSchema = z.record(z.string(), classificationSchema);
 
 /**
- * JSON-file cache keyed by a hash of the review text, so the same text never hits the LLM twice.
+ * JSON cache keyed by a hash of the review text, so the same text never hits the LLM twice.
  * `scope` names the model: results of one model are not reused for another.
  */
 export class ClassificationCache {
   private entries = new Map<string, Classification>();
   private loaded = false;
 
-  constructor(private readonly filePath: string) {}
+  private readonly store: TextStore;
+
+  /** A string is the path of a local JSON file. */
+  constructor(store: string | TextStore) {
+    this.store = typeof store === "string" ? new FileStore(store) : store;
+  }
 
   static keyFor(text: string, scope = ""): string {
     return createHash("sha256").update(`${scope}\n${text.trim().toLowerCase()}`).digest("hex");
@@ -32,18 +36,17 @@ export class ClassificationCache {
   }
 
   async save(): Promise<void> {
-    await mkdir(path.dirname(this.filePath), { recursive: true });
-    await writeFile(this.filePath, JSON.stringify(Object.fromEntries(this.entries)));
+    await this.store.write(JSON.stringify(Object.fromEntries(this.entries)));
   }
 
   private async load(): Promise<void> {
     if (this.loaded) return;
     this.loaded = true;
     try {
-      const parsed = cacheFileSchema.parse(JSON.parse(await readFile(this.filePath, "utf8")));
+      const parsed = cacheFileSchema.parse(JSON.parse((await this.store.read()) ?? ""));
       this.entries = new Map(Object.entries(parsed));
     } catch {
-      // Missing or corrupted cache file: start empty, it is only a cache.
+      // Missing or corrupted cache: start empty, it is only a cache.
     }
   }
 }

@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { FileStore, type TextStore } from "../storage/TextStore";
 import type { ClassifiedReview } from "../types";
 import type { LlmClient } from "./LlmClient";
 import { GROUP_TOPICS_PROMPT_VERSION, type TopicItem } from "./prompts";
@@ -19,11 +18,16 @@ const keyOf = (review: { category: string; topic: string }) => `${review.categor
  * polishes the result.
  */
 export class TopicGrouper {
+  private readonly store: TextStore;
+
+  /** `store` as a string is the path of a local JSON file. */
   constructor(
     private readonly llm: LlmClient,
-    private readonly cacheFile: string,
+    store: string | TextStore,
     private readonly cacheScope: string,
-  ) {}
+  ) {
+    this.store = typeof store === "string" ? new FileStore(store) : store;
+  }
 
   async group(
     reviews: ClassifiedReview[],
@@ -55,8 +59,7 @@ export class TopicGrouper {
     }
 
     if (llmCalls > 0) {
-      await mkdir(path.dirname(this.cacheFile), { recursive: true });
-      await writeFile(this.cacheFile, JSON.stringify(cache));
+      await this.store.write(JSON.stringify(cache));
     }
     signal?.throwIfAborted();
 
@@ -92,7 +95,7 @@ export class TopicGrouper {
 
   private async readCache(): Promise<Record<string, Mapping>> {
     try {
-      return JSON.parse(await readFile(this.cacheFile, "utf8"));
+      return JSON.parse((await this.store.read()) ?? "");
     } catch {
       return {};
     }

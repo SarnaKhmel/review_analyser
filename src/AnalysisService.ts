@@ -19,7 +19,13 @@ import type {
   Locale,
 } from "./types";
 
-type StoredAnalysis = { reviews: ClassifiedReview[]; analytics: Analytics };
+export type StoredAnalysis = { reviews: ClassifiedReview[]; analytics: Analytics };
+
+/** Keeps the latest analysis of every app, so the chat can answer questions about it. */
+export type AnalysisStore = {
+  get(appId: string): Promise<StoredAnalysis | undefined>;
+  set(appId: string, analysis: StoredAnalysis): Promise<void>;
+};
 
 type Dependencies = {
   /** Picks the LLM for a request: the user's own, or the server default when no settings are sent. */
@@ -30,14 +36,17 @@ type Dependencies = {
   createSource: (appId: string, limit: number, locale: Locale) => ReviewSource;
   fallbackSource: ReviewSource;
   defaultLocale: Locale;
+  /** Omitted = in memory, until the server restarts. */
+  analyses?: AnalysisStore;
 };
 
 /** The use cases of the app: collect → classify → aggregate, and chat over the result. */
 export class AnalysisService {
-  // MVP storage: results live in memory until the server restarts.
-  private readonly analyses = new Map<string, StoredAnalysis>();
+  private readonly analyses: AnalysisStore;
 
-  constructor(private readonly deps: Dependencies) {}
+  constructor(private readonly deps: Dependencies) {
+    this.analyses = deps.analyses ?? inMemoryAnalyses();
+  }
 
   /**
    * Collection only: no LLM involved, works without an API key.
@@ -97,12 +106,12 @@ export class AnalysisService {
     const reviews = grouped.reviews;
     const analytics = aggregate(appId, reviews);
 
-    this.analyses.set(appId, { reviews, analytics });
+    await this.analyses.set(appId, { reviews, analytics });
     return { appId, locale, source: fetched.source, warning: fetched.warning, stats, analytics, reviews };
   }
 
   async chat(appId: string, question: string, llmSettings?: LlmSettings): Promise<string> {
-    const analysis = this.analyses.get(appId);
+    const analysis = await this.analyses.get(appId);
     if (!analysis) {
       throw new UserError("Спершу проаналізуйте застосунок, а потім ставте питання", 404);
     }
@@ -115,4 +124,12 @@ export class AnalysisService {
     const { llm } = this.deps.createLlm(llmSettings);
     return llm.answer("You are a connection test. Reply with the single word: OK", "ping");
   }
+}
+
+function inMemoryAnalyses(): AnalysisStore {
+  const analyses = new Map<string, StoredAnalysis>();
+  return {
+    get: async (appId) => analyses.get(appId),
+    set: async (appId, analysis) => void analyses.set(appId, analysis),
+  };
 }

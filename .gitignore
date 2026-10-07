@@ -3,3 +3,5 @@ dist/
 .env
 data/cache/
 data/reviews/
+.wrangler/
+.dev.vars

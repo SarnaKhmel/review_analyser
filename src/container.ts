@@ -1,4 +1,4 @@
-import { AnalysisService } from "./AnalysisService";
+import { AnalysisService, type AnalysisStore } from "./AnalysisService";
 import { config } from "./config";
 import { ClassificationCache } from "./llm/ClassificationCache";
 import { createLlm } from "./llm/createLlm";
@@ -8,11 +8,21 @@ import { FileSource } from "./sources/FileSource";
 import { GooglePlaySource } from "./sources/GooglePlaySource";
 import { MergedSource } from "./sources/MergedSource";
 import type { ReviewSource } from "./sources/ReviewSource";
+import type { TextStore } from "./storage/TextStore";
 import { ALL_LANGUAGES, type Locale } from "./types";
 
+/** What the Workers deployment replaces: it has no disk and no long-lived memory. */
+type Overrides = {
+  cacheStore?: TextStore;
+  topicGroupsStore?: TextStore;
+  fallbackSource?: ReviewSource;
+  analyses?: AnalysisStore;
+};
+
 /** Composition root: the only place that knows which concrete classes are used. */
-export function createAnalysisService(): AnalysisService {
-  const cache = new ClassificationCache(config.cacheFile);
+export function createAnalysisService(overrides: Overrides = {}): AnalysisService {
+  const cache = new ClassificationCache(overrides.cacheStore ?? config.cacheFile);
+  const topicGroups = overrides.topicGroupsStore ?? config.topicGroupsFile;
 
   return new AnalysisService({
     createLlm,
@@ -22,10 +32,11 @@ export function createAnalysisService(): AnalysisService {
         concurrency: config.concurrency,
         cacheScope,
       }),
-    createTopicGrouper: (llm, cacheScope) => new TopicGrouper(llm, config.topicGroupsFile, cacheScope),
+    createTopicGrouper: (llm, cacheScope) => new TopicGrouper(llm, topicGroups, cacheScope),
     createSource: createGooglePlaySource,
-    fallbackSource: new FileSource(config.fallbackFile),
+    fallbackSource: overrides.fallbackSource ?? new FileSource(config.fallbackFile),
     defaultLocale: config.defaultLocale,
+    analyses: overrides.analyses,
   });
 }
 
